@@ -1,0 +1,7 @@
+{
+  "name": "AstroGuide AI",
+  "description": "A next-generation AI fortune-telling and counseling app combining Eastern and Western astrology with empathetic AI guidance.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
