@@ -1,11 +1,10 @@
 
-import { GoogleGenAI, Type, GenerateContentResponse, Chat } from "@google/genai";
-import { SYSTEM_INSTRUCTION } from "../constants";
-import { DailyHoroscope } from "../types";
+import { GoogleGenAI, Type, Chat } from "@google/genai";
+import { getSystemInstruction } from "../constants";
+import { DailyHoroscope, UserProfile } from "../types";
 
 const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
 
-// Tools for function calling
 const tools = [
   {
     functionDeclarations: [
@@ -37,13 +36,15 @@ const tools = [
   },
 ];
 
-export const generateDailyHoroscope = async (birthInfo: string): Promise<DailyHoroscope> => {
+export const generateDailyHoroscope = async (profile: UserProfile): Promise<DailyHoroscope> => {
   const ai = getAI();
+  const birthInfo = `${profile.name}, 生於 ${profile.birthDate} ${profile.birthTime} 於 ${profile.birthPlace}`;
+  
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `用戶出生資訊：${birthInfo}。請生成今日運勢。`,
+    contents: `用戶背景：${birthInfo}。請對比今日星象，為該用戶生成今日專屬運勢報告。`,
     config: {
-      systemInstruction: SYSTEM_INSTRUCTION,
+      systemInstruction: getSystemInstruction(profile),
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -66,12 +67,12 @@ export const generateDailyHoroscope = async (birthInfo: string): Promise<DailyHo
   return JSON.parse(response.text);
 };
 
-export const startAstroChat = (systemInstruction: string): Chat => {
+export const startAstroChat = (profile: UserProfile): Chat => {
   const ai = getAI();
   return ai.chats.create({
     model: 'gemini-3-pro-preview',
     config: {
-      systemInstruction,
+      systemInstruction: getSystemInstruction(profile),
       tools,
     }
   });
@@ -90,29 +91,25 @@ export const analyzeFace = async (base64Image: string): Promise<string> => {
       }
     ],
     config: {
-      systemInstruction: SYSTEM_INSTRUCTION
+      systemInstruction: getSystemInstruction()
     }
   });
   return response.text;
 };
 
-// Mock function handlers for Function Calling
 export const handleFunctionCall = (name: string, args: any) => {
   if (name === 'calculate_natal_chart') {
     return {
-      sun: 'Taurus 14°',
-      moon: 'Cancer 22°',
-      ascendant: 'Scorpio 5°',
-      ziwei_main_star: 'Purple Palace (紫微星) in Career Palace',
-      notes: 'Strong alignment for creative leadership.'
+      sun: '解析中...',
+      moon: '解析中...',
+      ziwei_star: '主星入命宮',
+      status: 'success'
     };
   }
   if (name === 'get_lunar_calendar') {
     return {
-      lunar_date: '農曆三月十七',
-      solar_term: '立夏',
-      favorable: '祭祀、出行',
-      unfavorable: '動土、移徙'
+      lunar_date: '農曆查詢成功',
+      status: 'success'
     };
   }
   return { error: 'Function not found' };

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AppSection, UserProfile } from './types';
 import Navigation from './components/Navigation';
 import Home from './components/Home';
@@ -12,20 +12,30 @@ const App: React.FC = () => {
   const [activeSection, setActiveSection] = useState<AppSection>(AppSection.HOME);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
+  // 初始化讀取
   useEffect(() => {
     const saved = localStorage.getItem('astro_guide_profile');
     if (saved) {
-      setUserProfile(JSON.parse(saved));
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.name) {
+          setUserProfile(parsed);
+        }
+      } catch (e) {
+        console.error("Failed to parse saved profile", e);
+      }
     }
   }, []);
 
-  const saveProfile = (profile: UserProfile) => {
+  // 儲存邏輯：確保狀態更新與持久化同步
+  const saveProfile = useCallback((profile: UserProfile) => {
     setUserProfile(profile);
     localStorage.setItem('astro_guide_profile', JSON.stringify(profile));
     setActiveSection(AppSection.HOME);
-  };
+  }, []);
 
   const renderSection = () => {
+    // 強制流程：若無資料則必須先設定（除非主動切換到設定頁面）
     if (!userProfile && activeSection !== AppSection.PROFILE) {
       return <ProfileSetup onSave={saveProfile} />;
     }
@@ -34,9 +44,10 @@ const App: React.FC = () => {
       case AppSection.HOME:
         return <Home onNavigate={setActiveSection} userProfile={userProfile} />;
       case AppSection.DAILY:
-        return <DailyHoroscopeView userProfile={userProfile!} />;
+        // 此時 userProfile 必不為 null (受上方 if 保護)
+        return <DailyHoroscopeView key={JSON.stringify(userProfile)} userProfile={userProfile!} />;
       case AppSection.CHAT:
-        return <ChatBot userProfile={userProfile!} />;
+        return <ChatBot key={JSON.stringify(userProfile)} userProfile={userProfile!} />;
       case AppSection.VISION:
         return <FaceAnalysis />;
       case AppSection.PROFILE:
@@ -55,9 +66,12 @@ const App: React.FC = () => {
         >
           AstroGuide AI
         </h1>
-        <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold border border-indigo-400">
+        <button 
+          onClick={() => setActiveSection(AppSection.PROFILE)}
+          className="w-10 h-10 rounded-full bg-indigo-600/30 flex items-center justify-center text-xs font-bold border border-indigo-400/50 hover:bg-indigo-600/50 transition-all"
+        >
           {userProfile?.name?.charAt(0) || '?'}
-        </div>
+        </button>
       </header>
 
       <main className="flex-grow p-4 md:p-8 max-w-4xl mx-auto w-full">
